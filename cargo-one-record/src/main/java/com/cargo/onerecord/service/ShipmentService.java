@@ -1,9 +1,12 @@
 package com.cargo.onerecord.service;
 
 import com.cargo.onerecord.dto.common.WeightDto;
+import com.cargo.onerecord.dto.kafka.CargoKafkaEvent;
 import com.cargo.onerecord.dto.shipment.ShipmentRequest;
 import com.cargo.onerecord.dto.shipment.ShipmentResponse;
 import com.cargo.onerecord.exception.ResourceNotFoundException;
+import com.cargo.onerecord.kafka.CargoEventProducer;
+import com.cargo.onerecord.kafka.KafkaTopicConfig;
 import com.cargo.onerecord.model.common.Weight;
 import com.cargo.onerecord.model.shipment.Shipment;
 import com.cargo.onerecord.repository.ShipmentRepository;
@@ -12,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +28,7 @@ public class ShipmentService {
 
     private final ShipmentRepository shipmentRepository;
     private final WaybillRepository waybillRepository;
+    private final CargoEventProducer eventProducer;
 
     @Value("${one-record.server.company-identifier}")
     private String companyIdentifier;
@@ -44,7 +50,14 @@ public class ShipmentService {
 
         shipment.setCompanyIdentifier(companyIdentifier);
         Shipment saved = shipmentRepository.save(shipment);
-        return toResponse(saved);
+        ShipmentResponse response = toResponse(saved);
+
+        eventProducer.publish(KafkaTopicConfig.TOPIC_SHIPMENTS,
+                eventProducer.buildEvent("SHIPMENT_CREATED",
+                        saved.getId().toString(), "cargo:Shipment",
+                        saved.getLogisticsObjectRef(), "CREATED",
+                        currentUser(), response));
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -83,7 +96,13 @@ public class ShipmentService {
         shipment.setSpecialHandlingCodes(request.getSpecialHandlingCodes());
         shipment.setRevision(shipment.getRevision() + 1);
 
-        return toResponse(shipmentRepository.save(shipment));
+        ShipmentResponse response = toResponse(shipmentRepository.save(shipment));
+        eventProducer.publish(KafkaTopicConfig.TOPIC_SHIPMENTS,
+                eventProducer.buildEvent("SHIPMENT_UPDATED",
+                        id.toString(), "cargo:Shipment",
+                        shipment.getLogisticsObjectRef(), "UPDATED",
+                        currentUser(), response));
+        return response;
     }
 
     @Transactional
@@ -92,6 +111,19 @@ public class ShipmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Shipment", id));
         shipment.setIsDeleted(true);
         shipmentRepository.save(shipment);
+
+        eventProducer.publish(KafkaTopicConfig.TOPIC_SHIPMENTS,
+                eventProducer.buildEvent("SHIPMENT_DELETED",
+                        id.toString(), "cargo:Shipment",
+                        shipment.getLogisticsObjectRef(), "DELETED",
+                        currentUser(), null));
+    }
+
+    // --- Helpers ---
+
+    private String currentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "system";
     }
 
     // --- Mappers ---

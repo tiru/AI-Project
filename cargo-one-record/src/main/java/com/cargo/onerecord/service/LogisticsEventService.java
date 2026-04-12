@@ -2,13 +2,18 @@ package com.cargo.onerecord.service;
 
 import com.cargo.onerecord.dto.event.LogisticsEventRequest;
 import com.cargo.onerecord.dto.event.LogisticsEventResponse;
+import com.cargo.onerecord.dto.kafka.CargoKafkaEvent;
 import com.cargo.onerecord.exception.ResourceNotFoundException;
+import com.cargo.onerecord.kafka.CargoEventProducer;
+import com.cargo.onerecord.kafka.KafkaTopicConfig;
 import com.cargo.onerecord.model.event.LogisticsEvent;
 import com.cargo.onerecord.repository.LogisticsEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +26,7 @@ import java.util.stream.Collectors;
 public class LogisticsEventService {
 
     private final LogisticsEventRepository eventRepository;
+    private final CargoEventProducer eventProducer;
 
     @Value("${one-record.server.company-identifier}")
     private String companyIdentifier;
@@ -44,7 +50,22 @@ public class LogisticsEventService {
                 .build();
 
         event.setCompanyIdentifier(companyIdentifier);
-        return toResponse(eventRepository.save(event));
+        LogisticsEventResponse response = toResponse(eventRepository.save(event));
+
+        eventProducer.publish(KafkaTopicConfig.TOPIC_LOGISTICS_EVENTS,
+                eventProducer.buildEvent("LOGISTICS_EVENT_RECORDED",
+                        request.getLogisticsObjectId().toString(),
+                        request.getLogisticsObjectTypeRef() != null
+                                ? request.getLogisticsObjectTypeRef() : "cargo:LogisticsObject",
+                        companyIdentifier + "/logistics-objects/" + request.getLogisticsObjectId(),
+                        request.getEventCode().toUpperCase(),
+                        currentUser(), response));
+        return response;
+    }
+
+    private String currentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "system";
     }
 
     @Transactional(readOnly = true)

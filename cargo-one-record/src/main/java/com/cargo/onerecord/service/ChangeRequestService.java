@@ -3,7 +3,10 @@ package com.cargo.onerecord.service;
 import com.cargo.onerecord.dto.action.ChangeRequestRequest;
 import com.cargo.onerecord.dto.action.ChangeRequestResponse;
 import com.cargo.onerecord.dto.action.ChangeRequestReview;
+import com.cargo.onerecord.dto.kafka.CargoKafkaEvent;
 import com.cargo.onerecord.exception.ResourceNotFoundException;
+import com.cargo.onerecord.kafka.CargoEventProducer;
+import com.cargo.onerecord.kafka.KafkaTopicConfig;
 import com.cargo.onerecord.model.action.AuditTrailEntry;
 import com.cargo.onerecord.model.action.ChangeRequest;
 import com.cargo.onerecord.repository.AuditTrailRepository;
@@ -26,6 +29,7 @@ public class ChangeRequestService {
 
     private final ChangeRequestRepository changeRequestRepository;
     private final AuditTrailRepository auditTrailRepository;
+    private final CargoEventProducer eventProducer;
 
     @Value("${one-record.server.company-identifier}")
     private String companyIdentifier;
@@ -46,7 +50,15 @@ public class ChangeRequestService {
                 .build();
 
         cr.setCompanyIdentifier(companyIdentifier);
-        return toResponse(changeRequestRepository.save(cr));
+        ChangeRequest saved = changeRequestRepository.save(cr);
+        ChangeRequestResponse response = toResponse(saved);
+
+        eventProducer.publish(KafkaTopicConfig.TOPIC_CHANGE_REQUESTS,
+                eventProducer.buildEvent("CHANGE_REQUEST_SUBMITTED",
+                        saved.getId().toString(), "api:ChangeRequest",
+                        saved.getLogisticsObjectRef(), "PENDING",
+                        currentUser, response));
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -98,7 +110,16 @@ public class ChangeRequestService {
             recordAuditEntry(saved, reviewer);
         }
 
-        return toResponse(saved);
+        ChangeRequestResponse response = toResponse(saved);
+        String eventType = decision.equals("APPROVED")
+                ? "CHANGE_REQUEST_APPROVED" : "CHANGE_REQUEST_REJECTED";
+
+        eventProducer.publish(KafkaTopicConfig.TOPIC_CHANGE_REQUESTS,
+                eventProducer.buildEvent(eventType,
+                        saved.getId().toString(), "api:ChangeRequest",
+                        saved.getLogisticsObjectRef(), decision,
+                        reviewer, response));
+        return response;
     }
 
     @Transactional
@@ -117,7 +138,14 @@ public class ChangeRequestService {
 
         cr.setStatus(ChangeRequest.RequestStatus.REVOKED);
         cr.setReviewedAt(OffsetDateTime.now());
-        return toResponse(changeRequestRepository.save(cr));
+        ChangeRequestResponse response = toResponse(changeRequestRepository.save(cr));
+
+        eventProducer.publish(KafkaTopicConfig.TOPIC_CHANGE_REQUESTS,
+                eventProducer.buildEvent("CHANGE_REQUEST_REVOKED",
+                        id.toString(), "api:ChangeRequest",
+                        cr.getLogisticsObjectRef(), "REVOKED",
+                        currentUser, response));
+        return response;
     }
 
     // --- Private helpers ---

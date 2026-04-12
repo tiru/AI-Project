@@ -1,8 +1,11 @@
 package com.cargo.onerecord.service;
 
 import com.cargo.onerecord.dto.booking.*;
+import com.cargo.onerecord.dto.kafka.CargoKafkaEvent;
 import com.cargo.onerecord.dto.transport.TransportSegmentResponse;
 import com.cargo.onerecord.exception.ResourceNotFoundException;
+import com.cargo.onerecord.kafka.CargoEventProducer;
+import com.cargo.onerecord.kafka.KafkaTopicConfig;
 import com.cargo.onerecord.model.booking.Booking;
 import com.cargo.onerecord.model.booking.BookingRequest;
 import com.cargo.onerecord.repository.BookingRepository;
@@ -11,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +30,7 @@ public class BookingService {
     private final BookingRequestRepository bookingRequestRepository;
     private final BookingRepository bookingRepository;
     private final TransportService transportService;
+    private final CargoEventProducer eventProducer;
 
     @Value("${one-record.server.company-identifier}")
     private String companyIdentifier;
@@ -54,7 +60,15 @@ public class BookingService {
                 .status(BookingRequest.BookingStatus.PENDING)
                 .build();
         request.setCompanyIdentifier(companyIdentifier);
-        return toRequestResponse(bookingRequestRepository.save(request));
+        BookingRequest saved = bookingRequestRepository.save(request);
+        BookingRequestResponse response = toRequestResponse(saved);
+
+        eventProducer.publish(KafkaTopicConfig.TOPIC_BOOKINGS,
+                eventProducer.buildEvent("BOOKING_REQUEST_SUBMITTED",
+                        saved.getId().toString(), "cargo:BookingRequest",
+                        saved.getLogisticsObjectRef(), "PENDING",
+                        currentUser(), response));
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -89,6 +103,12 @@ public class BookingService {
         request.setStatus(BookingRequest.BookingStatus.CANCELLED);
         request.setCancellationReason(reason);
         bookingRequestRepository.save(request);
+
+        eventProducer.publish(KafkaTopicConfig.TOPIC_BOOKINGS,
+                eventProducer.buildEvent("BOOKING_REQUEST_CANCELLED",
+                        id.toString(), "cargo:BookingRequest",
+                        request.getLogisticsObjectRef(), "CANCELLED",
+                        currentUser(), null));
     }
 
     // --- Booking ---
@@ -128,7 +148,14 @@ public class BookingService {
                 bookingRequestRepository.save(req);
             });
         }
-        return toBookingResponse(saved);
+        BookingResponse response = toBookingResponse(saved);
+
+        eventProducer.publish(KafkaTopicConfig.TOPIC_BOOKINGS,
+                eventProducer.buildEvent("BOOKING_CONFIRMED",
+                        saved.getId().toString(), "cargo:Booking",
+                        saved.getLogisticsObjectRef(), "CONFIRMED",
+                        currentUser(), response));
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -163,7 +190,21 @@ public class BookingService {
         booking.setStatus(Booking.BookingStatus.CANCELLED);
         booking.setCancellationReason(reason);
         booking.setRevision(booking.getRevision() + 1);
-        return toBookingResponse(bookingRepository.save(booking));
+        BookingResponse response = toBookingResponse(bookingRepository.save(booking));
+
+        eventProducer.publish(KafkaTopicConfig.TOPIC_BOOKINGS,
+                eventProducer.buildEvent("BOOKING_CANCELLED",
+                        id.toString(), "cargo:Booking",
+                        booking.getLogisticsObjectRef(), "CANCELLED",
+                        currentUser(), response));
+        return response;
+    }
+
+    // --- Helpers ---
+
+    private String currentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "system";
     }
 
     // --- Mappers ---
