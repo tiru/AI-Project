@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: cargo-one-record
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/cargoonerecord}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+jwt:
+  secret: ${JWT_SECRET:cargo-one-record-secret-key-must-be-at-least-256-bits-long-for-hs256}
+  expiration: 86400000   # 24 hours in milliseconds
+
+one-record:
+  server:
+    title: "Cargo ONE Record Server"
+    description: "Airline Cargo Management System based on IATA ONE Record Standard"
+    version: "2.0.0"
+    company-identifier: ${COMPANY_IDENTIFIER:https://cargo.example.com}
+    supported-api-versions:
+      - "2.0.0"
+    supported-ontologies:
+      - "https://onerecord.iata.org/ns/cargo"
+      - "https://onerecord.iata.org/ns/api"
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
