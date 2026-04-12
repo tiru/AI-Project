@@ -1,0 +1,1099 @@
+{
+  "info": {
+    "name": "Cargo ONE Record API",
+    "description": "IATA ONE Record v2.0 — Airline Cargo Management System\n\nWorkflow:\n1. Register a user (Auth/Register)\n2. Login → token is auto-saved to {{token}}\n3. Create Company, TransportMeans\n4. Create Shipment → Pieces → Waybill\n5. Create BookingRequest → Confirm Booking\n6. Add LogisticsEvents to track cargo status\n7. Submit ChangeRequest → Review (approve/reject)\n8. View AuditTrail for full version history\n\nBase URL: {{baseUrl}} (default: http://localhost:8080)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "shipmentId", "value": "", "type": "string" },
+    { "key": "pieceId", "value": "", "type": "string" },
+    { "key": "waybillId", "value": "", "type": "string" },
+    { "key": "companyId", "value": "", "type": "string" },
+    { "key": "personId", "value": "", "type": "string" },
+    { "key": "transportMeansId", "value": "", "type": "string" },
+    { "key": "transportSegmentId", "value": "", "type": "string" },
+    { "key": "bookingRequestId", "value": "", "type": "string" },
+    { "key": "bookingId", "value": "", "type": "string" },
+    { "key": "changeRequestId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Admin User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\",\n  \"email\": \"admin@cargo.example.com\",\n  \"role\": \"ADMIN\",\n  \"companyIdentifier\": \"https://cargo.example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register Operator User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"operator1\",\n  \"password\": \"op123\",\n  \"email\": \"operator@cargo.example.com\",\n  \"role\": \"OPERATOR\",\n  \"companyIdentifier\": \"https://cargo.example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register Viewer User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"viewer1\",\n  \"password\": \"view123\",\n  \"email\": \"viewer@cargo.example.com\",\n  \"role\": \"VIEWER\",\n  \"companyIdentifier\": \"https://cargo.example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login (auto-saves token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) {",
+                  "  pm.collectionVariables.set('token', json.token);",
+                  "  console.log('Token saved:', json.token.substring(0, 30) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login — Invalid Password (401)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrongpassword\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Server Info",
+      "item": [
+        {
+          "name": "Get ONE Record Server Info",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Companies",
+      "item": [
+        {
+          "name": "Create Airline Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('companyId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/companies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Emirates Airline\",\n  \"shortName\": \"EK\",\n  \"companyType\": \"AIRLINE\",\n  \"iataCarrierCode\": \"EK\",\n  \"icaoCode\": \"UAE\",\n  \"cassCode\": \"1745\",\n  \"taxId\": \"AE-TAX-123456\",\n  \"address\": {\n    \"streetAddressLine1\": \"Emirates Group Headquarters\",\n    \"streetAddressLine2\": \"PO Box 686\",\n    \"postalCode\": \"00000\",\n    \"cityName\": \"Dubai\",\n    \"countryCode\": \"AE\",\n    \"iataLocationCode\": \"DXB\"\n  },\n  \"contactDetails\": [\n    { \"contactType\": \"EMAIL\", \"contactValue\": \"cargo@emirates.com\" },\n    { \"contactType\": \"PHONE\", \"contactValue\": \"+971-4-708-1111\" }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Freight Forwarder",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/companies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"DHL Global Forwarding\",\n  \"shortName\": \"DHL\",\n  \"companyType\": \"FREIGHT_FORWARDER\",\n  \"address\": {\n    \"streetAddressLine1\": \"Deutsche Post Strasse 1\",\n    \"cityName\": \"Bonn\",\n    \"countryCode\": \"DE\"\n  },\n  \"contactDetails\": [\n    { \"contactType\": \"EMAIL\", \"contactValue\": \"forwarding@dhl.com\" }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Company by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/companies/{{companyId}}"
+          }
+        },
+        {
+          "name": "Get Airline by IATA Code",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/companies/iata/EK"
+          }
+        },
+        {
+          "name": "List Companies",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/companies?page=0&size=10",
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Company",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/companies/{{companyId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Emirates Airline\",\n  \"shortName\": \"EK\",\n  \"companyType\": \"AIRLINE\",\n  \"iataCarrierCode\": \"EK\",\n  \"icaoCode\": \"UAE\",\n  \"cassCode\": \"1745\",\n  \"taxId\": \"AE-TAX-999999\",\n  \"address\": {\n    \"streetAddressLine1\": \"Emirates Group HQ — Updated\",\n    \"cityName\": \"Dubai\",\n    \"countryCode\": \"AE\",\n    \"iataLocationCode\": \"DXB\"\n  },\n  \"contactDetails\": [\n    { \"contactType\": \"EMAIL\", \"contactValue\": \"cargo.updated@emirates.com\" }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Contact Person to Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('personId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/companies/{{companyId}}/persons",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"salutation\": \"Mr.\",\n  \"firstName\": \"Ahmed\",\n  \"lastName\": \"Al-Rashid\",\n  \"jobTitle\": \"Cargo Sales Manager\",\n  \"department\": \"Cargo Operations\",\n  \"contactDetails\": [\n    { \"contactType\": \"EMAIL\", \"contactValue\": \"ahmed.alrashid@emirates.com\" },\n    { \"contactType\": \"MOBILE\", \"contactValue\": \"+971-50-123-4567\" }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Persons for Company",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/companies/{{companyId}}/persons"
+          }
+        },
+        {
+          "name": "Delete Company",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/companies/{{companyId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shipments",
+      "item": [
+        {
+          "name": "Create Shipment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('shipmentId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/shipments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goodsDescription\": \"Electronic components — smartphones and accessories\",\n  \"declaredValueForCarriage\": 85000.00,\n  \"declaredValueForCustoms\": 85000.00,\n  \"totalGrossWeight\": {\n    \"value\": 450.5,\n    \"unit\": \"KGM\"\n  },\n  \"shipperIdentifier\": \"https://cargo.example.com/logistics-objects/shipper-001\",\n  \"shipperName\": \"TechCorp Electronics Ltd\",\n  \"consigneeIdentifier\": \"https://cargo.example.com/logistics-objects/consignee-001\",\n  \"consigneeName\": \"GlobalRetail Distribution GmbH\",\n  \"specialHandlingCodes\": [\"ELI\", \"CAO\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Shipment by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/shipments/{{shipmentId}}"
+          }
+        },
+        {
+          "name": "List Shipments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/shipments?page=0&size=10",
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Shipments by Shipper",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/shipments?shipper=TechCorp&page=0&size=10",
+              "query": [
+                { "key": "shipper", "value": "TechCorp" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Shipment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/shipments/{{shipmentId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goodsDescription\": \"Electronic components — smartphones, accessories and chargers\",\n  \"declaredValueForCarriage\": 90000.00,\n  \"declaredValueForCustoms\": 90000.00,\n  \"totalGrossWeight\": {\n    \"value\": 480.0,\n    \"unit\": \"KGM\"\n  },\n  \"shipperName\": \"TechCorp Electronics Ltd\",\n  \"consigneeName\": \"GlobalRetail Distribution GmbH\",\n  \"specialHandlingCodes\": [\"ELI\", \"CAO\", \"PIL\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Shipment",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/shipments/{{shipmentId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pieces",
+      "item": [
+        {
+          "name": "Create Piece",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('pieceId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/pieces",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentId\": \"{{shipmentId}}\",\n  \"coload\": false,\n  \"grossWeight\": {\n    \"value\": 22.5,\n    \"unit\": \"KGM\"\n  },\n  \"dimensions\": {\n    \"length\": 60.0,\n    \"width\": 40.0,\n    \"height\": 30.0,\n    \"volume\": 0.072,\n    \"unit\": \"CMT\"\n  },\n  \"loadType\": \"LOOSE\",\n  \"stackable\": true,\n  \"turnable\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Piece by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/pieces/{{pieceId}}"
+          }
+        },
+        {
+          "name": "Get Pieces by Shipment",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/pieces/shipment/{{shipmentId}}"
+          }
+        },
+        {
+          "name": "List All Pieces",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/pieces?page=0&size=10",
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Piece",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/pieces/{{pieceId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"coload\": false,\n  \"grossWeight\": {\n    \"value\": 23.0,\n    \"unit\": \"KGM\"\n  },\n  \"dimensions\": {\n    \"length\": 60.0,\n    \"width\": 40.0,\n    \"height\": 32.0,\n    \"volume\": 0.077,\n    \"unit\": \"CMT\"\n  },\n  \"loadType\": \"LOOSE\",\n  \"stackable\": true,\n  \"turnable\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Piece",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/pieces/{{pieceId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Waybills",
+      "item": [
+        {
+          "name": "Create Waybill (MAWB)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('waybillId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/waybills",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentId\": \"{{shipmentId}}\",\n  \"waybillNumber\": \"176-12345678\",\n  \"waybillType\": \"MASTER\",\n  \"carrierCode\": \"EK\",\n  \"carrierName\": \"Emirates Airline\",\n  \"originCode\": \"DXB\",\n  \"originName\": \"Dubai International Airport\",\n  \"destinationCode\": \"FRA\",\n  \"destinationName\": \"Frankfurt Airport\",\n  \"issueDate\": \"2025-01-15\",\n  \"chargeableWeight\": 450.5,\n  \"chargeableWeightUnit\": \"KGM\",\n  \"ratePerKg\": 4.50,\n  \"totalCharges\": 2027.25,\n  \"currency\": \"USD\",\n  \"freightChargesPrepaid\": true,\n  \"shipper\": \"TechCorp Electronics Ltd, Dubai, AE\",\n  \"consignee\": \"GlobalRetail Distribution GmbH, Frankfurt, DE\",\n  \"goodsDescription\": \"Electronic components — smartphones and accessories\",\n  \"handlingInfo\": \"HANDLE WITH CARE — FRAGILE ELECTRONICS\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Waybill by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/waybills/{{waybillId}}"
+          }
+        },
+        {
+          "name": "Get Waybill by AWB Number",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/waybills/number/176-12345678"
+          }
+        },
+        {
+          "name": "List Waybills",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/waybills?page=0&size=10",
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Waybill",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/waybills/{{waybillId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"carrierCode\": \"EK\",\n  \"carrierName\": \"Emirates Airline\",\n  \"originCode\": \"DXB\",\n  \"destinationCode\": \"FRA\",\n  \"issueDate\": \"2025-01-15\",\n  \"chargeableWeight\": 480.0,\n  \"chargeableWeightUnit\": \"KGM\",\n  \"ratePerKg\": 4.50,\n  \"totalCharges\": 2160.00,\n  \"currency\": \"USD\",\n  \"freightChargesPrepaid\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Waybill",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/waybills/{{waybillId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transport",
+      "item": [
+        {
+          "name": "Create Transport Means (Aircraft)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('transportMeansId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/transport-means",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transportMode\": \"AIRCRAFT\",\n  \"flightNumber\": \"EK201\",\n  \"aircraftType\": \"Boeing 777F\",\n  \"registrationNumber\": \"A6-EFH\",\n  \"operatingCarrierCode\": \"EK\",\n  \"maxPayloadKg\": 102000.0,\n  \"maxVolumeCbm\": 653.0\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Transport Means by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/transport-means/{{transportMeansId}}"
+          }
+        },
+        {
+          "name": "List Transport Means",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/transport-means?page=0&size=10",
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Transport Means",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/transport-means/{{transportMeansId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transportMode\": \"AIRCRAFT\",\n  \"flightNumber\": \"EK201\",\n  \"aircraftType\": \"Boeing 777F\",\n  \"registrationNumber\": \"A6-EFH\",\n  \"operatingCarrierCode\": \"EK\",\n  \"maxPayloadKg\": 103000.0,\n  \"maxVolumeCbm\": 655.0\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Transport Segment (Flight Leg)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('transportSegmentId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/transport-segments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sequenceNumber\": 1,\n  \"departureLocationCode\": \"DXB\",\n  \"departureLocationName\": \"Dubai International Airport\",\n  \"scheduledDeparture\": \"2025-01-20T02:30:00+04:00\",\n  \"arrivalLocationCode\": \"FRA\",\n  \"arrivalLocationName\": \"Frankfurt Airport\",\n  \"scheduledArrival\": \"2025-01-20T07:15:00+01:00\",\n  \"transportMeansId\": \"{{transportMeansId}}\",\n  \"shipmentId\": \"{{shipmentId}}\",\n  \"bookedWeightKg\": 450.5,\n  \"bookedVolumeCbm\": 3.2\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Transport Segment by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/transport-segments/{{transportSegmentId}}"
+          }
+        },
+        {
+          "name": "List Transport Segments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/transport-segments?page=0&size=10",
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Segment Status → DEPARTED",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/transport-segments/{{transportSegmentId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"segmentStatus\": \"DEPARTED\",\n  \"actualDeparture\": \"2025-01-20T02:45:00+04:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Segment Status → ARRIVED",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/transport-segments/{{transportSegmentId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"segmentStatus\": \"ARRIVED\",\n  \"actualArrival\": \"2025-01-20T07:30:00+01:00\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Booking",
+      "item": [
+        {
+          "name": "Submit Booking Request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('bookingRequestId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/booking-requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingRef\": \"BK-2025-001\",\n  \"originCode\": \"DXB\",\n  \"destinationCode\": \"FRA\",\n  \"requestedDeparture\": \"2025-01-20T02:30:00+04:00\",\n  \"requestedArrival\": \"2025-01-20T07:15:00+01:00\",\n  \"goodsDescription\": \"Electronic components — smartphones and accessories\",\n  \"totalPieces\": 20,\n  \"totalWeightKg\": 450.5,\n  \"totalVolumeCbm\": 3.2,\n  \"specialHandlingCodes\": \"ELI,CAO\",\n  \"shipperName\": \"TechCorp Electronics Ltd\",\n  \"consigneeName\": \"GlobalRetail Distribution GmbH\",\n  \"agentName\": \"DHL Global Forwarding\",\n  \"preferredCarrierCode\": \"EK\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Booking Request by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/booking-requests/{{bookingRequestId}}"
+          }
+        },
+        {
+          "name": "List Booking Requests — PENDING",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/booking-requests?status=PENDING&page=0&size=10",
+              "query": [
+                { "key": "status", "value": "PENDING" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List All Booking Requests",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/booking-requests?page=0&size=10",
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Booking Request",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/booking-requests/{{bookingRequestId}}/cancel?reason=Shipper+postponed+shipment",
+              "query": [{ "key": "reason", "value": "Shipper postponed shipment" }]
+            }
+          }
+        },
+        {
+          "name": "Confirm Booking (from Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('bookingId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingRequestId\": \"{{bookingRequestId}}\",\n  \"shipmentId\": \"{{shipmentId}}\",\n  \"waybillNumber\": \"176-12345678\",\n  \"originCode\": \"DXB\",\n  \"destinationCode\": \"FRA\",\n  \"confirmedDeparture\": \"2025-01-20T02:30:00+04:00\",\n  \"confirmedArrival\": \"2025-01-20T07:15:00+01:00\",\n  \"carrierCode\": \"EK\",\n  \"carrierName\": \"Emirates Airline\",\n  \"flightNumber\": \"EK201\",\n  \"confirmedWeightKg\": 450.5,\n  \"confirmedVolumeCbm\": 3.2,\n  \"ratePerKg\": 4.50,\n  \"totalCharges\": 2027.25,\n  \"currency\": \"USD\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Booking by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/bookings/{{bookingId}}"
+          }
+        },
+        {
+          "name": "Get Booking by Booking Number",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/bookings/number/EK-2025-00001"
+          }
+        },
+        {
+          "name": "List Bookings — Carrier EK",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/bookings?carrierCode=EK&page=0&size=10",
+              "query": [
+                { "key": "carrierCode", "value": "EK" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Confirmed Booking",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/logistics-objects/bookings/{{bookingId}}/cancel?reason=Cargo+not+ready",
+              "query": [{ "key": "reason", "value": "Cargo not ready" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logistics Events",
+      "item": [
+        {
+          "name": "Add Event — RCS (Received from Shipper)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/{{shipmentId}}/logistics-events",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventCode\": \"RCS\",\n  \"eventDescription\": \"Cargo received from shipper at DXB warehouse\",\n  \"eventDate\": \"2025-01-18T08:00:00+04:00\",\n  \"eventType\": \"ACTUAL\",\n  \"eventLocationCode\": \"DXB\",\n  \"eventLocationName\": \"Dubai International Airport — Cargo Terminal\",\n  \"recordedBy\": \"cargo-handler-001\",\n  \"pieceCount\": 20,\n  \"weight\": 450.5,\n  \"weightUnit\": \"KGM\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Event — MAN (Manifested)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/{{shipmentId}}/logistics-events",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventCode\": \"MAN\",\n  \"eventDescription\": \"Cargo manifested on flight EK201\",\n  \"eventDate\": \"2025-01-19T22:00:00+04:00\",\n  \"eventType\": \"ACTUAL\",\n  \"eventLocationCode\": \"DXB\",\n  \"eventLocationName\": \"Dubai International Airport\",\n  \"recordedBy\": \"dcs-system\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Event — DEP (Departed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/{{shipmentId}}/logistics-events",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventCode\": \"DEP\",\n  \"eventDescription\": \"Flight EK201 departed Dubai\",\n  \"eventDate\": \"2025-01-20T02:45:00+04:00\",\n  \"eventType\": \"ACTUAL\",\n  \"eventLocationCode\": \"DXB\",\n  \"eventLocationName\": \"Dubai International Airport\",\n  \"recordedBy\": \"ops-system\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Event — ARR (Arrived)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/{{shipmentId}}/logistics-events",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventCode\": \"ARR\",\n  \"eventDescription\": \"Flight EK201 arrived Frankfurt\",\n  \"eventDate\": \"2025-01-20T07:30:00+01:00\",\n  \"eventType\": \"ACTUAL\",\n  \"eventLocationCode\": \"FRA\",\n  \"eventLocationName\": \"Frankfurt Airport\",\n  \"recordedBy\": \"ops-system\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Event — DLV (Delivered)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/{{shipmentId}}/logistics-events",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventCode\": \"DLV\",\n  \"eventDescription\": \"Cargo delivered to consignee GlobalRetail Distribution GmbH\",\n  \"eventDate\": \"2025-01-20T14:00:00+01:00\",\n  \"eventType\": \"ACTUAL\",\n  \"eventLocationCode\": \"FRA\",\n  \"eventLocationName\": \"Frankfurt — Consignee Warehouse\",\n  \"recordedBy\": \"delivery-agent\",\n  \"pieceCount\": 20,\n  \"weight\": 450.5,\n  \"weightUnit\": \"KGM\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Event — NFD (Notified)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/{{shipmentId}}/logistics-events",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventCode\": \"NFD\",\n  \"eventDescription\": \"Consignee notified — cargo available for pickup\",\n  \"eventDate\": \"2025-01-20T09:00:00+01:00\",\n  \"eventType\": \"ACTUAL\",\n  \"eventLocationCode\": \"FRA\",\n  \"eventLocationName\": \"Frankfurt Airport — Cargo Terminal\",\n  \"recordedBy\": \"notification-system\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Events for Object",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/{{shipmentId}}/logistics-events"
+          }
+        },
+        {
+          "name": "Get Latest Event (Current Status)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/{{shipmentId}}/latest-event"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Change Requests",
+      "item": [
+        {
+          "name": "Submit Change Request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('changeRequestId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/action-requests/change-requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetObjectId\": \"{{shipmentId}}\",\n  \"targetObjectType\": \"cargo:Shipment\",\n  \"fieldPath\": \"totalGrossWeight.value\",\n  \"oldValue\": \"450.5\",\n  \"newValue\": \"465.0\",\n  \"reason\": \"Reweigh at origin warehouse confirmed higher weight\",\n  \"requestedBy\": \"operator1\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Change Request by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/action-requests/change-requests/{{changeRequestId}}"
+          }
+        },
+        {
+          "name": "List Change Requests — PENDING",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/action-requests/change-requests?status=PENDING&page=0&size=10",
+              "query": [
+                { "key": "status", "value": "PENDING" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Review Change Request — APPROVE",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/action-requests/change-requests/{{changeRequestId}}/review",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVED\",\n  \"reviewedBy\": \"admin\",\n  \"reviewNotes\": \"Verified — reweigh document received and confirmed\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Review Change Request — REJECT",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/action-requests/change-requests/{{changeRequestId}}/review",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"REJECTED\",\n  \"reviewedBy\": \"admin\",\n  \"reviewNotes\": \"No supporting document provided. Request denied.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Revoke Change Request",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/action-requests/change-requests/{{changeRequestId}}/revoke",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Submitted by mistake — correct value already in system\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Trail",
+      "item": [
+        {
+          "name": "Get Audit Trail for Shipment",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/{{shipmentId}}/audit-trail"
+          }
+        },
+        {
+          "name": "Get Audit Trail for Waybill",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/{{waybillId}}/audit-trail"
+          }
+        },
+        {
+          "name": "Get Audit Trail for Booking",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/{{bookingId}}/audit-trail"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Cases",
+      "item": [
+        {
+          "name": "Get Shipment — Not Found (404)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/logistics-objects/shipments/00000000-0000-0000-0000-000000000000"
+          }
+        },
+        {
+          "name": "Access Without Token (401)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/logistics-objects/shipments"
+          }
+        },
+        {
+          "name": "Create Shipment — Missing Required Fields (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/shipments",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "Duplicate AWB Number (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/logistics-objects/waybills",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"waybillNumber\": \"176-12345678\",\n  \"waybillType\": \"MASTER\",\n  \"carrierCode\": \"EK\",\n  \"originCode\": \"DXB\",\n  \"destinationCode\": \"LHR\",\n  \"issueDate\": \"2025-01-15\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
