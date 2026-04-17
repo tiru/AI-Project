@@ -45,17 +45,34 @@ export interface Piece {
 // ── Waybill ─────────────────────────────────────────────────────────
 export interface Waybill {
   id: string;
-  awbNumber?: string;
+  waybillNumber?: string;
   waybillType?: string;
-  originAirport?: string;
-  destinationAirport?: string;
-  issuer?: Company;
-  consignee?: Company;
-  chargeableWeight?: number;
-  totalCharges?: number;
-  currency?: string;
+  carrierCode?: string;
+  originCode?: string;
+  originName?: string;
+  destinationCode?: string;
+  destinationName?: string;
   issueDate?: string;
+  numberOfPieces?: number;
+  totalWeight?: number;
+  totalWeightUnit?: string;
+  shipmentId?: string;
+  revision?: number;
   createdAt?: string;
+}
+export interface WaybillRequest {
+  waybillNumber: string;
+  waybillType: string;
+  carrierCode: string;
+  originCode: string;
+  originName?: string;
+  destinationCode: string;
+  destinationName?: string;
+  issueDate?: string;
+  numberOfPieces?: number;
+  totalWeight?: number;
+  totalWeightUnit?: string;
+  shipmentId?: string;
 }
 
 // ── Company ─────────────────────────────────────────────────────────

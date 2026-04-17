@@ -2,7 +2,7 @@ import axios from "axios";
 import type {
   AuthResponse, LoginRequest, RegisterRequest,
   Shipment, ShipmentRequest, Page,
-  Piece, Waybill,
+  Piece, Waybill, WaybillRequest,
   Company, CompanyRequest,
   LogisticsEvent, LogisticsEventRequest,
   BookingRequestDto, BookingRequestPayload,
@@ -60,7 +60,7 @@ export const getWaybills   = (page = 0, size = 10) =>
   http.get<Page<Waybill>>(`/logistics-objects/waybills?page=${page}&size=${size}`);
 export const getWaybill    = (id: string) =>
   http.get<Waybill>(`/logistics-objects/waybills/${id}`);
-export const createWaybill = (data: object) =>
+export const createWaybill = (data: WaybillRequest) =>
   http.post<Waybill>("/logistics-objects/waybills", data);
 
 // ── Companies ─────────────────────────────────────────────────────────

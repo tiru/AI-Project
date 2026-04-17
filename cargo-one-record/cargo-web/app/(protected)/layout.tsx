@@ -5,13 +5,16 @@ import { useAuth } from "@/context/AuthContext";
 import Sidebar from "@/components/layout/Sidebar";
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const router   = useRouter();
+  const { user, initialized } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    if (!user) router.replace("/login");
-  }, [user, router]);
+    // Only redirect after localStorage has been read
+    if (initialized && !user) router.replace("/login");
+  }, [user, initialized, router]);
 
+  // Show nothing while restoring session to avoid flash-redirect
+  if (!initialized) return null;
   if (!user) return null;
 
   return (
