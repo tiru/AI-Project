@@ -8,11 +8,14 @@ import { createShipment } from "@/lib/api";
 export default function NewShipmentPage() {
   const router = useRouter();
   const [form, setForm] = useState({
-    shipmentNumber: "",
     goodsDescription: "",
-    totalGrossWeight: "",
-    totalVolume: "",
+    shipperName: "",
+    consigneeName: "",
+    weightValue: "",
+    weightUnit: "KGM",
     specialHandlingCodes: "",
+    declaredValue: "",
+    currency: "USD",
   });
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,18 +27,23 @@ export default function NewShipmentPage() {
     setError(""); setLoading(true);
     try {
       const payload = {
-        shipmentNumber:      form.shipmentNumber,
-        goodsDescription:    form.goodsDescription,
-        totalGrossWeight:    form.totalGrossWeight    ? parseFloat(form.totalGrossWeight)    : undefined,
-        totalVolume:         form.totalVolume         ? parseFloat(form.totalVolume)         : undefined,
+        goodsDescription: form.goodsDescription,
+        shipperName:      form.shipperName,
+        consigneeName:    form.consigneeName,
+        totalGrossWeight: form.weightValue
+          ? { value: parseFloat(form.weightValue), unit: form.weightUnit }
+          : undefined,
+        declaredValueForCarriage: form.declaredValue ? parseFloat(form.declaredValue) : undefined,
+        declaredValueCurrency:    form.declaredValue ? form.currency : undefined,
         specialHandlingCodes: form.specialHandlingCodes
           ? form.specialHandlingCodes.split(",").map(s => s.trim()).filter(Boolean)
           : undefined,
       };
       const res = await createShipment(payload);
       router.push(`/shipments/${res.data.id}`);
-    } catch {
-      setError("Failed to create shipment. Please check the details and try again.");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || "Failed to create shipment. Please check the details and try again.");
     } finally {
       setLoading(false);
     }
@@ -60,12 +68,6 @@ export default function NewShipmentPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="label">Shipment Number <span className="text-red-500">*</span></label>
-            <input className="input" placeholder="e.g. SHP-2024-001" value={form.shipmentNumber}
-              onChange={e => set("shipmentNumber", e.target.value)} required />
-          </div>
-
-          <div>
             <label className="label">Goods Description <span className="text-red-500">*</span></label>
             <textarea className="input min-h-[80px] resize-none" placeholder="Describe the goods being shipped..."
               value={form.goodsDescription} onChange={e => set("goodsDescription", e.target.value)} required />
@@ -73,14 +75,43 @@ export default function NewShipmentPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Total Gross Weight (kg)</label>
-              <input className="input" type="number" step="0.01" placeholder="0.00"
-                value={form.totalGrossWeight} onChange={e => set("totalGrossWeight", e.target.value)} />
+              <label className="label">Shipper Name <span className="text-red-500">*</span></label>
+              <input className="input" placeholder="e.g. Acme Corp" value={form.shipperName}
+                onChange={e => set("shipperName", e.target.value)} required />
             </div>
             <div>
-              <label className="label">Total Volume (m³)</label>
-              <input className="input" type="number" step="0.001" placeholder="0.000"
-                value={form.totalVolume} onChange={e => set("totalVolume", e.target.value)} />
+              <label className="label">Consignee Name <span className="text-red-500">*</span></label>
+              <input className="input" placeholder="e.g. Global Imports Ltd" value={form.consigneeName}
+                onChange={e => set("consigneeName", e.target.value)} required />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2">
+              <label className="label">Gross Weight</label>
+              <input className="input" type="number" step="0.01" placeholder="0.00"
+                value={form.weightValue} onChange={e => set("weightValue", e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Unit</label>
+              <select className="input" value={form.weightUnit} onChange={e => set("weightUnit", e.target.value)}>
+                <option value="KGM">KGM (kg)</option>
+                <option value="LBR">LBR (lb)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2">
+              <label className="label">Declared Value</label>
+              <input className="input" type="number" step="0.01" placeholder="0.00"
+                value={form.declaredValue} onChange={e => set("declaredValue", e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Currency</label>
+              <select className="input" value={form.currency} onChange={e => set("currency", e.target.value)}>
+                <option>USD</option><option>EUR</option><option>GBP</option><option>SGD</option>
+              </select>
             </div>
           </div>
 

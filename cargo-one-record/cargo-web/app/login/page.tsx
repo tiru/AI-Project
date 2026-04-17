@@ -19,7 +19,7 @@ export default function LoginPage() {
     setError(""); setLoading(true);
     try {
       const res = await login(form);
-      setUser({ token: res.data.token, username: res.data.username, role: res.data.role });
+      setUser({ token: res.data.accessToken, username: res.data.username, role: res.data.role });
       router.push("/dashboard");
     } catch {
       setError("Invalid username or password.");

@@ -77,7 +77,7 @@ export default function ChangeRequestsPage() {
                 <select className="input" value={form.shipmentId}
                   onChange={e => setForm(p => ({ ...p, shipmentId: e.target.value }))} required>
                   <option value="">Select shipment...</option>
-                  {shipments.map(s => <option key={s.id} value={s.id}>{s.shipmentNumber} — {s.goodsDescription}</option>)}
+                  {shipments.map(s => <option key={s.id} value={s.id}>{s.goodsDescription}</option>)}
                 </select>
               </div>
               <div>
@@ -127,7 +127,7 @@ export default function ChangeRequestsPage() {
             ) : crs.map(r => (
               <tr key={r.id} className="hover:bg-gray-50">
                 <td className="table-td font-mono text-xs text-gray-400">#{r.id}</td>
-                <td className="table-td font-medium">{r.shipment?.shipmentNumber ?? "—"}</td>
+                <td className="table-td font-medium">{r.shipment?.goodsDescription ?? "—"}</td>
                 <td className="table-td">
                   <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{r.changeType}</span>
                 </td>

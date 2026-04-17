@@ -66,7 +66,7 @@ export default function BookingsPage() {
             ) : bookings.map(b => (
               <tr key={b.id} className="hover:bg-gray-50">
                 <td className="table-td font-mono font-medium text-blue-600">{b.bookingReference}</td>
-                <td className="table-td">{b.shipment?.shipmentNumber ?? "—"}</td>
+                <td className="table-td">{b.shipment?.goodsDescription ?? "—"}</td>
                 <td className="table-td font-mono text-sm">{b.flightNumber ?? "—"}</td>
                 <td className="table-td text-sm">{b.origin && b.destination ? `${b.origin} → ${b.destination}` : "—"}</td>
                 <td className="table-td text-sm">{b.departureDate ?? "—"}</td>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Plus, Search, Eye } from "lucide-react";
 import { getShipments } from "@/lib/api";
 import { Shipment } from "@/types";
-import StatusBadge from "@/components/common/StatusBadge";
+
 import { useAuth } from "@/context/AuthContext";
 
 export default function ShipmentsPage() {
@@ -31,8 +31,8 @@ export default function ShipmentsPage() {
   useEffect(() => { load(); }, []);
 
   const filtered = shipments.filter(s =>
-    s.shipmentNumber?.toLowerCase().includes(search.toLowerCase()) ||
-    s.goodsDescription?.toLowerCase().includes(search.toLowerCase())
+    s.goodsDescription?.toLowerCase().includes(search.toLowerCase()) ||
+    s.shipperName?.toLowerCase().includes(search.toLowerCase())
   );
   const totalPages = Math.ceil(total / size);
 
@@ -62,11 +62,11 @@ export default function ShipmentsPage() {
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="table-th">Shipment #</th>
               <th className="table-th">Goods Description</th>
-              <th className="table-th">Weight (kg)</th>
+              <th className="table-th">Shipper</th>
+              <th className="table-th">Consignee</th>
+              <th className="table-th">Weight</th>
               <th className="table-th">Pieces</th>
-              <th className="table-th">Status</th>
               <th className="table-th">Actions</th>
             </tr>
           </thead>
@@ -84,11 +84,11 @@ export default function ShipmentsPage() {
             ) : (
               filtered.map(s => (
                 <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="table-td font-medium text-blue-600">{s.shipmentNumber}</td>
-                  <td className="table-td max-w-xs truncate">{s.goodsDescription}</td>
-                  <td className="table-td">{s.totalGrossWeight?.toFixed(2)}</td>
-                  <td className="table-td">{s.pieces?.length ?? 0}</td>
-                  <td className="table-td"><StatusBadge status={s.shipmentStatus ?? "UNKNOWN"} /></td>
+                  <td className="table-td font-medium max-w-xs truncate">{s.goodsDescription}</td>
+                  <td className="table-td">{s.shipperName ?? "—"}</td>
+                  <td className="table-td">{s.consigneeName ?? "—"}</td>
+                  <td className="table-td">{s.totalGrossWeight ? `${s.totalGrossWeight.value} ${s.totalGrossWeight.unit}` : "—"}</td>
+                  <td className="table-td">{s.pieceCount ?? 0}</td>
                   <td className="table-td">
                     <Link href={`/shipments/${s.id}`} className="inline-flex items-center gap-1 text-blue-600 hover:underline text-sm">
                       <Eye className="w-3.5 h-3.5" /> View

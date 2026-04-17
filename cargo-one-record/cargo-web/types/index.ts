@@ -4,28 +4,33 @@ export interface RegisterRequest {
   username: string; password: string; email: string; fullName?: string;
   role?: string; companyIdentifier?: string;
 }
-export interface AuthResponse { token: string; username: string; role: string }
+export interface AuthResponse { accessToken: string; token?: string; username: string; role: string }
 
 // ── Shipment ────────────────────────────────────────────────────────
 export interface Shipment {
   id: string;
-  shipmentNumber?: string;
+  logisticsObjectRef?: string;
   goodsDescription?: string;
-  totalGrossWeight?: number;
-  totalVolume?: number;
-  shipmentStatus?: string;
+  shipperName?: string;
+  consigneeName?: string;
+  totalGrossWeight?: WeightDto;
+  declaredValueForCarriage?: number;
+  declaredValueCurrency?: string;
   specialHandlingCodes?: string[];
   pieceCount?: number;
-  pieces?: Piece[];
   waybillNumber?: string;
-  waybill?: Waybill;
+  revision?: number;
   createdAt?: string; updatedAt?: string;
 }
+export interface WeightDto { value: number; unit: string }
+
 export interface ShipmentRequest {
-  shipmentNumber?: string;
   goodsDescription: string;
-  totalGrossWeight?: number;
-  totalVolume?: number;
+  shipperName: string;
+  consigneeName: string;
+  totalGrossWeight?: WeightDto;
+  declaredValueForCarriage?: number;
+  declaredValueCurrency?: string;
   specialHandlingCodes?: string[];
 }
 

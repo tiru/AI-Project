@@ -72,10 +72,9 @@ export default function ShipmentDetailPage() {
         <Link href="/shipments" className="text-gray-400 hover:text-gray-600"><ArrowLeft className="w-5 h-5" /></Link>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{shipment.shipmentNumber}</h1>
-            <StatusBadge status={shipment.shipmentStatus ?? "UNKNOWN"} />
+            <h1 className="text-2xl font-bold text-gray-900">{shipment.goodsDescription}</h1>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5">{shipment.goodsDescription}</p>
+          <p className="text-sm text-gray-500 mt-0.5">{shipment.shipperName} → {shipment.consigneeName}</p>
         </div>
       </div>
 
@@ -99,10 +98,10 @@ export default function ShipmentDetailPage() {
               <h3 className="font-semibold text-gray-900">Shipment Details</h3>
             </div>
             <dl className="space-y-3 text-sm">
-              <div className="flex justify-between"><dt className="text-gray-500">Shipment #</dt><dd className="font-medium">{shipment.shipmentNumber}</dd></div>
-              <div className="flex justify-between"><dt className="text-gray-500">Gross Weight</dt><dd>{shipment.totalGrossWeight ? `${shipment.totalGrossWeight} kg` : "—"}</dd></div>
-              <div className="flex justify-between"><dt className="text-gray-500">Volume</dt><dd>{shipment.totalVolume ? `${shipment.totalVolume} m³` : "—"}</dd></div>
-              <div className="flex justify-between"><dt className="text-gray-500">Pieces</dt><dd>{shipment.pieces?.length ?? 0}</dd></div>
+              <div className="flex justify-between"><dt className="text-gray-500">Shipper</dt><dd className="font-medium">{shipment.shipperName ?? "—"}</dd></div>
+              <div className="flex justify-between"><dt className="text-gray-500">Consignee</dt><dd>{shipment.consigneeName ?? "—"}</dd></div>
+              <div className="flex justify-between"><dt className="text-gray-500">Gross Weight</dt><dd>{shipment.totalGrossWeight ? `${shipment.totalGrossWeight.value} ${shipment.totalGrossWeight.unit}` : "—"}</dd></div>
+              <div className="flex justify-between"><dt className="text-gray-500">Pieces</dt><dd>{shipment.pieceCount ?? 0}</dd></div>
               {shipment.specialHandlingCodes?.length ? (
                 <div><dt className="text-gray-500 mb-1">Special Handling</dt>
                   <dd className="flex flex-wrap gap-1">{shipment.specialHandlingCodes.map(c => (
@@ -121,11 +120,10 @@ export default function ShipmentDetailPage() {
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <dt className="text-gray-500">Waybill</dt>
-                <dd>{shipment.waybill ? (
-                  <Link href={`/waybills`} className="text-blue-600 hover:underline">
-                    {shipment.waybill.awbNumber}
-                  </Link>
-                ) : "—"}</dd>
+                <dd>{shipment.waybillNumber
+                  ? <Link href="/waybills" className="text-blue-600 hover:underline">{shipment.waybillNumber}</Link>
+                  : "—"}
+                </dd>
               </div>
               <div className="flex justify-between"><dt className="text-gray-500">ID</dt><dd className="font-mono text-xs text-gray-400">{shipment.id}</dd></div>
             </dl>

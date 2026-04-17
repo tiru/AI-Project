@@ -11,6 +11,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL=http://localhost:8080
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
+# Ensure public dir exists so the COPY in runner never fails
+RUN mkdir -p /app/public
 
 FROM node:20-alpine AS runner
 WORKDIR /app
