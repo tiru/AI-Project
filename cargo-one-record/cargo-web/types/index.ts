@@ -59,25 +59,33 @@ export interface Waybill {
 }
 
 // ── Company ─────────────────────────────────────────────────────────
+export interface AddressDto {
+  streetAddressLine1?: string;
+  cityName?: string;
+  postalCode?: string;
+  countryCode?: string;
+  iataLocationCode?: string;
+}
 export interface Company {
-  id: string | number;
+  id: string;
   name: string;
-  iataCode?: string;
+  shortName?: string;
   companyType?: string;
-  country?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
+  iataCarrierCode?: string;
+  icaoCode?: string;
+  cassCode?: string;
+  address?: AddressDto;
   createdAt?: string;
 }
 export interface CompanyRequest {
   name: string;
-  iataCode?: string;
-  companyType?: string;
-  country?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
+  shortName?: string;
+  companyType: string;
+  iataCarrierCode?: string;
+  icaoCode?: string;
+  cassCode?: string;
+  taxId?: string;
+  address?: AddressDto;
 }
 
 // ── LogisticsEvent ──────────────────────────────────────────────────

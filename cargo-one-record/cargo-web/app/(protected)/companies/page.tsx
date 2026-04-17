@@ -31,7 +31,7 @@ export default function CompaniesPage() {
 
   const filtered = companies.filter(c =>
     c.name?.toLowerCase().includes(search.toLowerCase()) ||
-    c.iataCode?.toLowerCase().includes(search.toLowerCase())
+    c.iataCarrierCode?.toLowerCase().includes(search.toLowerCase())
   );
   const totalPages = Math.ceil(total / size);
 
@@ -82,8 +82,8 @@ export default function CompaniesPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-gray-900 truncate">{c.name}</h3>
-                    {c.iataCode && (
-                      <span className="font-mono text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{c.iataCode}</span>
+                    {c.iataCarrierCode && (
+                      <span className="font-mono text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{c.iataCarrierCode}</span>
                     )}
                   </div>
                   {c.companyType && (
@@ -91,7 +91,7 @@ export default function CompaniesPage() {
                       {c.companyType.replace("_", " ")}
                     </span>
                   )}
-                  {c.country && <p className="text-xs text-gray-400 mt-1">{c.country}</p>}
+                  {c.address?.cityName && <p className="text-xs text-gray-400 mt-1">{c.address.cityName}{c.address.countryCode ? `, ${c.address.countryCode}` : ""}</p>}
                 </div>
               </div>
             </div>
